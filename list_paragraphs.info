@@ -1,0 +1,5 @@
+name = List paragraphs
+description = Show and edit all paragraphs with their linked nodes.
+package = guusvandewal.nl
+core = 7.x
+dependencies = paragraphs

@@ -1,0 +1,134 @@
+<?php
+/**
+ * Implements hook_menu().
+ * Page, menu and access rights.
+ */
+function list_paragraphs_menu() {
+  $items = [];
+  $items['admin/paragraphs-listing'] = [
+    'title' => 'All paragraphs',
+    'description' => 'Settings for List paragraphs',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => ['list_all_paragraphs'],
+    'access arguments' => ['edit all paragraphs'],
+  ];
+  return $items;
+}
+
+/**
+ * The form itself.
+ *
+ * @param $form
+ * @param $form_state
+ *
+ * @return array
+ * @throws \Exception
+ */
+function list_all_paragraphs($form, &$form_state) {
+  $form = [];
+  $bundles_query = db_select('paragraphs_bundle', 'pb');
+  $bundle_result = $bundles_query
+    ->fields('pb', ['name', 'bundle'])
+    ->execute();
+  foreach ($bundle_result as $paragraph_bundle) {
+    $options[$paragraph_bundle->bundle] = $paragraph_bundle->name;
+  }
+  // Load all terms nodes form a paragraph bundle
+  $query = db_select('node', 'n');
+  $query->join('field_data_field_paragraphs', 'fp', 'n.nid = fp.entity_id');
+  $query->join('paragraphs_item', 'pi', 'pi.item_id = fp.field_paragraphs_value');
+  if (empty($form_state['values'])) {
+    $result = $query
+      ->fields('n', ['title', 'nid', 'status'])
+      ->fields('pi', ['bundle', 'item_id'])
+      ->execute();
+  }
+  else {
+    $result = $query
+      ->fields('n', ['title', 'nid', 'status'])
+      ->fields('pi', ['bundle', 'item_id'])
+      ->condition('pi.bundle', $form_state['values']['bundle'])
+      ->execute();
+  }
+
+  $header = [
+    'Link to node',
+    'Node ID',
+    'Edit node',
+    'Status',
+    'Paragraph bundle',
+  ];
+  $rows = [];
+  foreach ($result as $node) {
+    if ($node->status == 1) {
+      $status = 'published';
+    }
+    else {
+      $status = 'unpublished';
+    }
+    $linktext = '<span class="first-item">' . $node->title . '</span>' . '<span class="second-item"></span>';
+    $rows[] = [
+      l($linktext, 'node/' . $node->nid, [
+        'html' => TRUE,
+        'attributes' => ['class' => ['table-links']],
+      ]),
+      $node->nid,
+      l(t('Edit'), 'node/' . $node->nid . '/edit', [
+        'html' => TRUE,
+        'attributes' => ['class' => ['table-links']],
+      ]),
+      $status,
+      $node->bundle,
+    ];
+  }
+  $output = theme('table', [
+    'header' => $header,
+    'rows' => $rows,
+    'attributes' => ['id' => 'sortable-table'],
+  ]);
+
+  $form['paragraph_bundles'] = [
+    '#type' => 'fieldset',
+    '#title' => 'Filter on paragraph bundle',
+  ];
+
+  if (!empty($options)) {
+    $form['paragraph_bundles']['bundle'] = [
+      '#type' => 'select',
+      '#options' => $options,
+      '#required' => TRUE,
+    ];
+  }
+
+  $form['container'] = [
+    '#markup' => $output,
+  ];
+
+  $form['paragraph_bundles']['actions'] = ['#type' => 'actions'];
+  $form['paragraph_bundles']['actions']['submit'] = [
+    '#type' => 'submit',
+    '#value' => t('Filter'),
+  ];
+  return $form;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * @param $form
+ * @param $form_state
+ * @param $form_id
+ */
+function list_paragraphs_form_list_all_paragraphs_alter(&$form, &$form_state, $form_id) {
+  $form['#submit'][] = '_list_paragraphs_submit';
+}
+
+/**
+ * Helper for submit actions.
+ *
+ * @param $form
+ * @param $form_state
+ */
+function _list_paragraphs_submit($form, &$form_state) {
+  $form_state['rebuild'] = TRUE;
+}
