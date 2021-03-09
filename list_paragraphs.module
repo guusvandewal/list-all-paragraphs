@@ -52,11 +52,11 @@ function list_all_paragraphs($form, &$form_state) {
   }
 
   $header = [
-    'Link to node',
-    'Node ID',
-    'Edit node',
-    'Status',
+    'Node',
     'Paragraph bundle',
+    'Status',
+    'Node ID',
+    'Edit',
   ];
   $rows = [];
   foreach ($result as $node) {
@@ -72,13 +72,14 @@ function list_all_paragraphs($form, &$form_state) {
         'html' => TRUE,
         'attributes' => ['class' => ['table-links']],
       ]),
+
+      $node->bundle,
+      $status,
       $node->nid,
       l(t('Edit'), 'node/' . $node->nid . '/edit', [
         'html' => TRUE,
         'attributes' => ['class' => ['table-links']],
       ]),
-      $status,
-      $node->bundle,
     ];
   }
   $output = theme('table', [
